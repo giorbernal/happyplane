@@ -32,7 +32,9 @@ class FeatureTransformer:
         # print "observations:", observations
         scaled = self.scaler.transform(observations)
         # assert(len(scaled.shape) == 2)
-        return self.featurizer.transform(scaled)
+        #return self.featurizer.transform(scaled)
+        return scaled
+        #return np.array(observations).reshape([1,-1])
     
     def __getObservations__(self, env, iters):
         data=[]
@@ -148,8 +150,8 @@ class QLearning:
 
 		    if (n + 1) % slot == 0:
 		        print("episode:", n, "total reward:", totalreward, ",iters:",iters, ",ia1:",ia1, "ia2:", ia2, ",ia3:", ia3)
-		        env.plane.drawPlane()
-		    print("avg reward for last ", slot, " episodes:", totalrewards[max(n-slot,0):n].mean())
+		        #env.plane.drawPlane()
+		    #print("avg reward for last ", slot, " episodes:", totalrewards[max(n-slot,0):n].mean())
 		    #print("total steps:", -totalrewards.sum())
 
 		env.plane.drawPlane()

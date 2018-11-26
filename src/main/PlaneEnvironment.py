@@ -163,7 +163,7 @@ class PlaneEnv:
         invalid_action_2=False
         invalid_action_3=False
         # Action execution
-        if (action == self.action_space_n()):
+        if (action == self.action_space_n()-1):
             if (self.passengerList.canRotate()):
                 self.passengerList.rotate()
             else:
@@ -179,7 +179,8 @@ class PlaneEnv:
                     invalid_action_2=True
             else:
                 #print("WARN: there is not room in row " + str(action))
-                invalid_action_3=True
+                return self.step(self.action_space_sample())
+                #invalid_action_3=True
 
         # Check if episode is finished
         done = self.passengerList.completed
