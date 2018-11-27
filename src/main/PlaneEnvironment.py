@@ -3,6 +3,9 @@
 import random as rnd
 import numpy as np
 
+PENALTY1=-5
+PENALTY2=0
+
 class Passenger:
     def __init__(self, pid):
         self.id=pid
@@ -67,6 +70,13 @@ class PassengerList:
             return True
         else:
             return False
+
+    def getGroup(self, passenger):
+        index=0
+        for g in self.groups:
+            if (passenger in g):
+                return g
+
 
 class Plane:
     def __init__(self, plane_dims):
@@ -162,9 +172,12 @@ class PlaneEnv:
         invalid_action_1=False
         invalid_action_2=False
         invalid_action_3=False
+        hasBeenRotated=False
         # Action execution
         if (action == self.action_space_n()-1):
+            hasBeenRotated=True
             if (self.passengerList.canRotate()):
+                #print('any rotation?')
                 self.passengerList.rotate()
             else:
                 #print("WARN: rotate group " + self.index_group + " is not possible!")
@@ -191,6 +204,12 @@ class PlaneEnv:
             for group in self.Groups:
                 reward = reward + self.__groupedLevel__(group)
             reward = reward + self.__windowLevel__()
+        else:
+            if (hasBeenRotated == True):
+                reward = self.__penaltyAfterRotate__()
+            else:
+                reward = self.__penaltyAfterRowSet__(action)
+
         
         info={'ia1':invalid_action_1,'ia2':invalid_action_2,'ia3':invalid_action_3}
         return (self.__s2x__(), reward, done, info)
@@ -245,7 +264,7 @@ class PlaneEnv:
         for i in range(self.plane.plane_dims[0]):
             g_row = 0
             for j in range(self.plane.plane_dims[1]):
-                if (self.plane.plane[i][j].isWindower is not None):
+                if (self.plane.plane[i][j] is not None):
                     if (self.plane.plane[i][j].id in id_group):
                         #print('---> id: ' + str(i) + ', ' + str(self.plane.plane[i][j].id))
                         g_row = g_row + 1
@@ -265,3 +284,30 @@ class PlaneEnv:
                             w_ok = w_ok + 1
         return float(w_ok/w_total)*100
 
+    def __penaltyAfterRotate__(self):
+        #print('__penaltyAfterRotate__')
+        isThereWindower=False
+        g=self.passengerList.groups[self.passengerList.index_group]
+        for p in g:
+            if(p.isWindower):
+                isThereWindower=True
+        if (isThereWindower == False):
+            return PENALTY1
+        else:
+            return 0
+
+    def __penaltyAfterRowSet__(self, action):
+        #print('__penaltyAfterRotate__')
+        row=self.plane.plane[action]
+        p_prev=None
+        for p in row:
+            if (p is None):
+                break
+            p_prev=p
+        g=self.passengerList.getGroup(p_prev)
+        r=self.__groupedLevel__(g)
+        #print('- ',p_prev.id,'|',g[0].id,'|',r)
+        if r<100:
+            return PENALTY2
+        else:
+            return 0
