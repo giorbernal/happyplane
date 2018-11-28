@@ -3,12 +3,13 @@
 import random as rnd
 import numpy as np
 
-PENALTY1=-5
-PENALTY2=0
+PENALTY_ROTATE=0
+PENALTY_SETROW=0
 
 class Passenger:
-    def __init__(self, pid):
+    def __init__(self, pid, group):
         self.id=pid
+        self.group=group
         self.isWindower=str(self.id).endswith('w')
         self.position=None
         self.status=0 # 0:'QUEUED_TO_BOARD', 1:'NEXT_TO_BOARD', 2:'PLACED_IN_PLANE'
@@ -71,11 +72,17 @@ class PassengerList:
         else:
             return False
 
-    def getGroup(self, passenger):
+    def getGroupRemain(self, passenger):
         index=0
         for g in self.groups:
             if (passenger in g):
-                return g
+                remain = 0
+                for r in g:
+                    if (r.status!=2):
+                        remain += 1
+                return index, remain
+            else:
+                index += 1
 
 
 class Plane:
@@ -107,6 +114,22 @@ class Plane:
                     if (self.plane[i][j].id == passenger.id):
                         return (i,j)
         return (0, 0)
+
+    # [(<free spaces>,<number of passenger from group Id>) ...]
+    def getSpaceForGroup(self, groupId):
+        spaceInRows = []
+        for i in range(self.plane_dims[0]):
+            freeSpaces = 0
+            happenings = 0
+            for j in range(self.plane_dims[1]):
+                if (self.plane[i][j] is None):
+                    freeSpaces += 1
+                elif (self.plane[i][j].group==groupId):
+                    happenings += 1
+            #print("space for group " + str(groupId) + ":",freeSpaces,happenings)
+            spaceInRows.append((freeSpaces,happenings))
+        return spaceInRows
+        
     
     def drawPlane(self):
         for i in range(self.plane_dims[0]):
@@ -127,13 +150,15 @@ class PlaneEnv:
         # read Groups
         self.Groups = []
         more_groups = True
+        index_group=0
         while more_groups:
             line = file.readline()
             if line is not '':
-                passengers = [Passenger(x) for x in line.replace('\n','').split(' ')]
+                passengers = [Passenger(x, index_group) for x in line.replace('\n','').split(' ')]
                 self.Groups.append(passengers)
             else:
                 more_groups = False
+            index_group += 1
         self.passengerList = PassengerList(self.Groups)
         
         # End reading
@@ -169,6 +194,7 @@ class PlaneEnv:
     
     # Run a step. Return: observation (std normalized), reward, done
     def step(self, action):
+        #print("action: ",action)
         invalid_action_1=False
         invalid_action_2=False
         invalid_action_3=False
@@ -292,7 +318,7 @@ class PlaneEnv:
             if(p.isWindower):
                 isThereWindower=True
         if (isThereWindower == False):
-            return PENALTY1
+            return PENALTY_ROTATE
         else:
             return 0
 
@@ -300,14 +326,23 @@ class PlaneEnv:
         #print('__penaltyAfterRotate__')
         row=self.plane.plane[action]
         p_prev=None
+        row_index=0
         for p in row:
             if (p is None):
                 break
+            row_index += 1
             p_prev=p
-        g=self.passengerList.getGroup(p_prev)
-        r=self.__groupedLevel__(g)
-        #print('- ',p_prev.id,'|',g[0].id,'|',r)
-        if r<100:
-            return PENALTY2
-        else:
-            return 0
+        i,g_size_remain=self.passengerList.getGroupRemain(p_prev)
+
+        spaceInRows=self.plane.getSpaceForGroup(i)
+        sir = np.array(spaceInRows)
+        #print("group: ",i," size remain: ",g_size_remain,", spaces in rows: ",spaceInRows)
+
+        # penalty conditions
+        if ( (p_prev.isWindower==True) & p_prev.position[1]!=0 & (sir[:,0].max() == self.plane.plane_dims[1]) ): 
+            return PENALTY_SETROW
+
+        if ( ((g_size_remain) > sir[0][0]) & ((g_size_remain + 1) <= sir[:,0].max()) ):
+            return PENALTY_SETROW
+
+        return 0

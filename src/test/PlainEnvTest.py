@@ -6,6 +6,8 @@ import sys
 sys.path.append('../main')
 
 from PlaneEnvironment import PlaneEnv
+from PlaneEnvironment import PENALTY_ROTATE
+from PlaneEnvironment import PENALTY_SETROW
 
 class PlainEnvTest(unittest.TestCase):
 
@@ -40,6 +42,32 @@ class PlainEnvTest(unittest.TestCase):
 		while (passengers.completed==False):
 			id=passengers.getNextAndUpdate().id
 		self.assertTrue(passengers.getNext() is None)
+
+	def testPenaltyRotate(self):
+		env = PlaneEnv('../../planes/plane1.txt')
+		passengers = env.passengerList
+		_,reward,_,_ = env.step(0)
+		self.assertTrue(reward == 0)		
+		_,reward,_,_ = env.step(4)
+		self.assertTrue(reward == 0)		
+		_,reward,_,_ = env.step(0)
+		self.assertTrue(reward == 0)
+		_,reward,_,_ = env.step(0)
+		self.assertTrue(reward == 0)
+		_,reward,_,_ = env.step(4)
+		self.assertTrue(reward == PENALTY_ROTATE, 'reward must be PENALTY_ROTATE')		
+
+	def testPenaltySetRow(self):
+		env = PlaneEnv('../../planes/plane1.txt')
+		passengers = env.passengerList
+		_,reward,_,_ = env.step(0)
+		self.assertTrue(reward == 0)		
+		_,reward,_,_ = env.step(0)
+		self.assertTrue(reward == 0)		
+		_,reward,_,_ = env.step(0)
+		self.assertTrue(reward == 0)		
+		_,reward,_,_ = env.step(0)
+		self.assertTrue(reward == PENALTY_SETROW, 'reward must be PENALTY_SETROW')		
 
 #    def test_split(self):
 #        s = 'hello world'
